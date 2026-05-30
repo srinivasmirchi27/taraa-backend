@@ -1,6 +1,6 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
@@ -9,27 +9,29 @@ import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './modules/products/products.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { UsersModule } from './modules/users/users.module';
+import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
+import { OtpModule } from './modules/otp/otp.module';
+import { PaymentModule } from './modules/payment/payment.module';
+import { MailModule } from './modules/mail/mail.module';
 import { LoggerMiddleware } from './middleware/logger.middleware';
 
 @Module({
   imports: [
-    // Config — loads .env, available everywhere via ConfigService
-    ConfigModule.forRoot({ isGlobal: true }),
+    // Config — loads .env.<NODE_ENV> first, then .env as fallback
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [
+        `.env.${process.env.NODE_ENV || 'development'}`,
+        '.env',
+      ],
+    }),
 
-    // Database — PostgreSQL via TypeORM
-    TypeOrmModule.forRootAsync({
+    // Database — MongoDB Atlas via Mongoose
+    MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get('DB_HOST', 'localhost'),
-        port: config.get<number>('DB_PORT', 5432),
-        username: config.get('DB_USERNAME', 'postgres'),
-        password: config.get('DB_PASSWORD', 'postgres'),
-        database: config.get('DB_NAME', 'taraa_db'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: config.get('NODE_ENV') !== 'production', // auto-migrate in dev only
-        logging: config.get('NODE_ENV') === 'development',
+        uri: config.get<string>('MONGODB_URI'),
       }),
     }),
 
@@ -50,16 +52,18 @@ import { LoggerMiddleware } from './middleware/logger.middleware';
     UsersModule,
     ProductsModule,
     OrdersModule,
+    CloudinaryModule,
+    OtpModule,
+    PaymentModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    // Apply rate limiting globally via guard
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule implements NestModule {
-  // Attach logger middleware to every route
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(LoggerMiddleware).forRoutes('*');
   }

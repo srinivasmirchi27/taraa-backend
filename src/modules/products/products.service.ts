@@ -1,60 +1,61 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindOptionsWhere } from 'typeorm';
-import { Product } from './entities/product.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Product, ProductDocument } from './schemas/product.schema';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
 @Injectable()
 export class ProductsService {
   constructor(
-    @InjectRepository(Product)
-    private readonly repo: Repository<Product>,
+    @InjectModel(Product.name)
+    private readonly model: Model<ProductDocument>,
   ) {}
 
-  async create(dto: CreateProductDto): Promise<Product> {
-    return this.repo.save(this.repo.create(dto));
+  async create(dto: CreateProductDto): Promise<ProductDocument> {
+    return this.model.create(dto);
   }
 
-  async findAll(params: { page?: number; limit?: number; category?: string; search?: string; inStock?: boolean }) {
+  async findAll(params: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    search?: string;
+    inStock?: boolean;
+  }) {
     const { page = 1, limit = 20, category, search, inStock } = params;
 
-    const where: FindOptionsWhere<Product> = {};
+    const where: Record<string, unknown> = {};
     if (category) where.category = category;
     if (inStock !== undefined) where.inStock = inStock;
-    if (search) where.name = Like(`%${search}%`);
+    if (search) where.name = { $regex: search, $options: 'i' };
 
-    const [items, total] = await this.repo.findAndCount({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { createdAt: 'DESC' },
-    });
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.model.find(where).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
+      this.model.countDocuments(where),
+    ]);
     return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string): Promise<Product> {
-    const product = await this.repo.findOne({ where: { id } });
+  async findOne(id: string): Promise<ProductDocument> {
+    const product = await this.model.findById(id).exec();
     if (!product) throw new NotFoundException(`Product ${id} not found`);
     return product;
   }
 
-  async update(id: string, dto: UpdateProductDto): Promise<Product> {
-    await this.findOne(id);
-    await this.repo.update(id, dto);
-    return this.findOne(id);
+  async update(id: string, dto: UpdateProductDto): Promise<ProductDocument> {
+    const product = await this.model.findByIdAndUpdate(id, dto, { new: true }).exec();
+    if (!product) throw new NotFoundException(`Product ${id} not found`);
+    return product;
   }
 
   async remove(id: string): Promise<void> {
-    await this.findOne(id);
-    await this.repo.delete(id);
+    const result = await this.model.findByIdAndDelete(id).exec();
+    if (!result) throw new NotFoundException(`Product ${id} not found`);
   }
 
   async getCategories(): Promise<string[]> {
-    const results = await this.repo
-      .createQueryBuilder('p')
-      .select('DISTINCT p.category', 'category')
-      .getRawMany();
-    return results.map((r) => r.category);
+    return this.model.distinct('category').exec();
   }
 }
