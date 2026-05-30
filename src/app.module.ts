@@ -13,6 +13,7 @@ import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
 import { OtpModule } from './modules/otp/otp.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { MailModule } from './modules/mail/mail.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 import { LoggerMiddleware } from './middleware/logger.middleware';
 
 @Module({
@@ -58,6 +59,7 @@ import { LoggerMiddleware } from './middleware/logger.middleware';
     OtpModule,
     PaymentModule,
     MailModule,
+    CategoriesModule,
   ],
   controllers: [AppController],
   providers: [
