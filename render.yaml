@@ -4,7 +4,7 @@ services:
     env: node
     region: singapore
     plan: free
-    buildCommand: npm ci --include=dev && nest build
+    buildCommand: npm install && nest build
     startCommand: node dist/main
     healthCheckPath: /api/v1/health
     envVars:
