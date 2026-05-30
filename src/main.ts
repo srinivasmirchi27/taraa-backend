@@ -25,15 +25,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
-  // CORS — dev allows all origins, prod restricts to CORS_ORIGINS
-  const isProd = config.get('NODE_ENV') === 'production';
-  const rawOrigins = config.get<string>('CORS_ORIGINS', '*');
-  const origins = isProd
-    ? rawOrigins.split(',').map((o) => o.trim())
-    : true; // allow all in dev
-
   app.enableCors({
-    origin: origins,
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
