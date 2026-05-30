@@ -17,13 +17,15 @@ import { LoggerMiddleware } from './middleware/logger.middleware';
 
 @Module({
   imports: [
-    // Config — loads .env.<NODE_ENV> first, then .env as fallback
+    // Config — on local: loads .env.<NODE_ENV> then .env as fallback
+    // On Render/cloud: env files don't exist, so process.env (set in dashboard) is used directly
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [
         `.env.${process.env.NODE_ENV || 'development'}`,
         '.env',
       ],
+      ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
 
     // Database — MongoDB Atlas via Mongoose

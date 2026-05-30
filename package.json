@@ -11,6 +11,8 @@
     "build": "cross-env NODE_ENV=development nest build",
     "build:staging": "cross-env NODE_ENV=staging nest build",
     "build:prod": "cross-env NODE_ENV=production nest build",
+    "render:build": "npm ci && npm run build:prod",
+    "render:start": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "test": "cross-env NODE_ENV=development jest",
     "test:e2e": "cross-env NODE_ENV=development jest --config ./test/jest-e2e.json"
