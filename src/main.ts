@@ -15,8 +15,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
 
-  // Security headers
-  app.use(helmet());
+  // Security headers (disable CORS-conflicting headers in dev)
+  app.use(helmet({ crossOriginResourcePolicy: false }));
 
   // Gzip compression
   app.use(compression());
@@ -25,9 +25,19 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
-  // CORS — allows Next.js frontend and admin panel
-  const origins = config.get<string>('CORS_ORIGINS', 'http://localhost:3000').split(',');
-  app.enableCors({ origin: origins, credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] });
+  // CORS — dev allows all origins, prod restricts to CORS_ORIGINS
+  const isProd = config.get('NODE_ENV') === 'production';
+  const rawOrigins = config.get<string>('CORS_ORIGINS', '*');
+  const origins = isProd
+    ? rawOrigins.split(',').map((o) => o.trim())
+    : true; // allow all in dev
+
+  app.enableCors({
+    origin: origins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  });
 
   // Global pipes — validate & transform all request bodies
   app.useGlobalPipes(
