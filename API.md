@@ -11,11 +11,12 @@
 1. [Auth](#1-auth)
 2. [OTP / Phone Auth](#2-otp--phone-auth)
 3. [Users](#3-users)
-4. [Products](#4-products)
-5. [Orders](#5-orders)
-6. [Payments (Razorpay)](#6-payments-razorpay)
-7. [Uploads (Cloudinary)](#7-uploads-cloudinary)
-8. [Health](#8-health)
+4. [Categories](#4-categories)
+5. [Products](#5-products)
+6. [Orders](#6-orders)
+7. [Payments (Razorpay)](#7-payments-razorpay)
+8. [Uploads (Cloudinary)](#8-uploads-cloudinary)
+9. [Health](#9-health)
 
 ---
 
@@ -351,7 +352,112 @@ Delete a user account.
 
 ---
 
-## 4. Products
+## 4. Categories
+
+### GET `/categories`
+List all categories. Returns only active categories by default, sorted by `sortOrder`.
+
+**Query params:** `?all=true` — include inactive categories (admin use)
+
+**Response `200`**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "6657a1b2c3d4e5f6a7b8c9d0",
+      "name": "Rings",
+      "slug": "rings",
+      "image": "https://res.cloudinary.com/diqp8qet7/image/upload/...",
+      "description": "Gold, silver and oxidised rings for every occasion.",
+      "isActive": true,
+      "sortOrder": 1,
+      "createdAt": "2026-05-31T00:00:00.000Z"
+    },
+    { "name": "Necklaces", "slug": "necklaces", "sortOrder": 2 },
+    { "name": "Earrings",  "slug": "earrings",  "sortOrder": 3 },
+    { "name": "Bangles",   "slug": "bangles",   "sortOrder": 4 },
+    { "name": "Anklets",   "slug": "anklets",   "sortOrder": 5 },
+    { "name": "Maang Tikka","slug": "maang-tikka","sortOrder": 6 },
+    { "name": "Nose Pins", "slug": "nose-pins", "sortOrder": 7 }
+  ]
+}
+```
+
+---
+
+### GET `/categories/:id`
+Get a category by its MongoDB ID.
+
+**Response `200`** — returns single category object.
+
+**Error `404`**
+```json
+{ "success": false, "message": "Category 6657a1b2... not found" }
+```
+
+---
+
+### GET `/categories/:slug/by-slug`
+Get a category by its slug (e.g. `rings`, `earrings`). Useful for frontend navigation.
+
+**Example:** `GET /categories/rings/by-slug`
+
+**Response `200`** — returns single category object.
+
+---
+
+### POST `/categories` 🔒 Admin
+Create a new category.
+
+**Request**
+```json
+{
+  "name": "Bracelets",
+  "slug": "bracelets",
+  "image": "https://res.cloudinary.com/diqp8qet7/image/upload/...",
+  "description": "Gold and silver bracelets for all occasions.",
+  "isActive": true,
+  "sortOrder": 8
+}
+```
+
+**Response `201`** — returns created category.
+
+**Error `409`** — slug already exists
+```json
+{ "success": false, "message": "Category with slug \"bracelets\" already exists" }
+```
+
+---
+
+### PATCH `/categories/:id` 🔒 Admin
+Update a category (partial update).
+
+**Request**
+```json
+{
+  "name": "Finger Rings",
+  "sortOrder": 1,
+  "isActive": false
+}
+```
+
+**Response `200`** — returns updated category.
+
+---
+
+### DELETE `/categories/:id` 🔒 Admin
+Delete a category permanently.
+
+**Response `200`**
+```json
+{ "success": true, "data": null }
+```
+
+---
+
+## 5. Products
 
 ### GET `/products`
 List products with optional filters.
@@ -402,13 +508,14 @@ List products with optional filters.
 ---
 
 ### GET `/products/categories`
-Get all unique product categories.
+Returns distinct category slugs derived from existing products.  
+> Prefer `GET /categories` for the full category objects with name, image, and sort order.
 
 **Response `200`**
 ```json
 {
   "success": true,
-  "data": ["rings", "necklaces", "earrings", "bangles", "anklets"]
+  "data": ["anklets", "bangles", "earrings", "maang-tikka", "necklaces", "nose-pins", "rings"]
 }
 ```
 
@@ -471,7 +578,7 @@ Delete a product.
 
 ---
 
-## 5. Orders
+## 6. Orders
 
 ### POST `/orders`
 Place a new order. Auth optional — guests can order too.
@@ -566,7 +673,7 @@ Update order status. Customers can only cancel their own orders.
 
 ---
 
-## 6. Payments (Razorpay)
+## 7. Payments (Razorpay)
 
 ### POST `/payments/initiate`
 Create a Razorpay order. Auth optional — guests can pay too.  
@@ -684,7 +791,7 @@ Initiate a full or partial refund.
 
 ---
 
-## 7. Uploads (Cloudinary)
+## 8. Uploads (Cloudinary)
 
 All upload routes require `Authorization: Bearer <accessToken>`.  
 Use `multipart/form-data` with the field name `file`.
@@ -734,7 +841,7 @@ Delete an image by its Cloudinary public ID.
 
 ---
 
-## 8. Health
+## 9. Health
 
 ### GET `/health`
 Public health check endpoint.
