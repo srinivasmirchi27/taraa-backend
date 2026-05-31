@@ -1,40 +1,21 @@
 import { IsString, IsNumber, IsBoolean, IsOptional, IsArray, Min, Max } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class CreateProductDto {
+export class BulkProductItemDto {
   @ApiProperty() @IsString() name: string;
   @ApiProperty() @IsString() category: string;
-
   @ApiProperty() @Type(() => Number) @IsNumber() @Min(0) price: number;
   @ApiProperty() @Type(() => Number) @IsNumber() @Min(0) originalPrice: number;
-
-  @ApiPropertyOptional() @IsOptional() @IsString() image?: string;
   @ApiProperty() @IsString() description: string;
 
+  @ApiPropertyOptional() @IsOptional() @IsString() image?: string;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) discount?: number;
-  @ApiPropertyOptional() @IsOptional() @IsArray() images?: string[];
+  @ApiPropertyOptional() @IsOptional() @IsArray() @IsString({ each: true }) images?: string[];
   @ApiPropertyOptional() @IsOptional() @IsString() badge?: string;
-
-  // multipart sends booleans as the string "true"/"false" — Transform handles it
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
-  @IsBoolean()
-  inStock?: boolean;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
-  @IsBoolean()
-  isNew?: boolean;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
-  @IsBoolean()
-  isBestSeller?: boolean;
-
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() inStock?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isNew?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() isBestSeller?: boolean;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(5) rating?: number;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) reviews?: number;
 }

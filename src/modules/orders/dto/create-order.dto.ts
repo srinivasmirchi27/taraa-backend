@@ -1,6 +1,6 @@
-import { IsArray, IsString, IsNumber, IsObject, ValidateNested, Min } from 'class-validator';
+import { IsArray, IsString, IsNumber, IsObject, IsOptional, IsEmail, ValidateNested, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 class OrderItemDto {
   @IsString() productId: string;
@@ -35,4 +35,9 @@ export class CreateOrderDto {
   @ApiProperty({ default: 'COD' })
   @IsString()
   paymentMethod: string;
+
+  @ApiPropertyOptional({ description: 'Guest email — required for order tracking without login' })
+  @IsOptional()
+  @IsEmail()
+  guestEmail?: string;
 }

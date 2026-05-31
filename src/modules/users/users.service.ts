@@ -43,7 +43,10 @@ export class UsersService {
   }
 
   async findByPhone(phone: string): Promise<UserDocument | null> {
-    return this.model.findOne({ phone }).exec();
+    const raw = phone.replace(/^\+91/, '');
+    return this.model.findOne({
+      $or: [{ phone }, { phone: raw }, { phone: `+91${raw}` }],
+    }).exec();
   }
 
   async findByGoogleId(googleId: string): Promise<UserDocument | null> {

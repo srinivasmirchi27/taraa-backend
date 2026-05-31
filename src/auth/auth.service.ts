@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
@@ -9,7 +9,9 @@ import { OAuth2Client } from 'google-auth-library';
 import { UsersService } from '../modules/users/users.service';
 import { UserDocument } from '../modules/users/schemas/user.schema';
 import { RefreshToken, RefreshTokenDocument } from './schemas/refresh-token.schema';
+import { Otp, OtpDocument, OtpPurpose } from '../modules/otp/schemas/otp.schema';
 import { MailService } from '../modules/mail/mail.service';
+import { SmsService } from '../modules/otp/sms.service';
 import { GoogleProfile } from './strategies/google.strategy';
 
 const REFRESH_TOKEN_DAYS = 30;
@@ -24,7 +26,10 @@ export class AuthService {
     private readonly config: ConfigService,
     @InjectModel(RefreshToken.name)
     private readonly refreshTokenModel: Model<RefreshTokenDocument>,
+    @InjectModel(Otp.name)
+    private readonly otpModel: Model<OtpDocument>,
     private readonly mailService: MailService,
+    private readonly smsService: SmsService,
   ) {
     this.googleClient = new OAuth2Client(config.get<string>('GOOGLE_CLIENT_ID'));
   }
@@ -85,9 +90,9 @@ export class AuthService {
     return this.issueTokenPair(user, meta);
   }
 
-  async register(name: string, email: string, password: string, meta?: { userAgent?: string; ip?: string }) {
+  async register(name: string, email: string, password: string, phone?: string, meta?: { userAgent?: string; ip?: string }) {
     const hashed = await bcrypt.hash(password, 12);
-    const user = await this.usersService.create({ name, email, password: hashed });
+    const user = await this.usersService.create({ name, email, password: hashed, phone, phoneVerified: false });
     this.mailService.sendWelcome(email, name).catch(() => null);
     return this.issueTokenPair(user, meta);
   }
@@ -185,5 +190,118 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
+  }
+
+  // ─── Phone verification — send OTP ───────────────────────────────────────
+  async sendPhoneVerificationOtp(userId: string, phone: string): Promise<{ message: string }> {
+    const existing = await this.usersService.findByPhone(phone);
+    if (existing && (existing._id as any).toString() !== userId) {
+      throw new BadRequestException('This phone number is already registered to another account');
+    }
+
+    const code = Math.floor(100_000 + Math.random() * 900_000).toString();
+    await this.otpModel.deleteMany({ phone, purpose: OtpPurpose.PHONE_VERIFICATION });
+    await this.otpModel.create({ phone, code, purpose: OtpPurpose.PHONE_VERIFICATION });
+
+    await this.smsService.send(phone, code);
+
+    return { message: `OTP sent to ${phone}. It expires in 10 minutes.` };
+  }
+
+  // ─── Phone verification — verify OTP ─────────────────────────────────────
+  async verifyPhone(userId: string, phone: string, code: string): Promise<{ message: string }> {
+    const record = await this.otpModel.findOne({
+      phone,
+      code,
+      purpose: OtpPurpose.PHONE_VERIFICATION,
+      verified: false,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!record) throw new BadRequestException('Invalid or expired OTP');
+
+    await record.updateOne({ verified: true });
+    await this.usersService.update(userId, { phone, phoneVerified: true });
+
+    return { message: 'Phone number verified successfully' };
+  }
+
+  // ─── Email verification — send OTP ───────────────────────────────────────
+  async sendEmailVerificationOtp(userId: string): Promise<{ message: string }> {
+    const user = await this.usersService.findOne(userId);
+    if (!user.email) throw new BadRequestException('No email address on this account');
+    if (user.emailVerified) throw new BadRequestException('Email is already verified');
+
+    const code = Math.floor(100_000 + Math.random() * 900_000).toString();
+    await this.otpModel.deleteMany({ email: user.email, purpose: OtpPurpose.EMAIL_VERIFICATION });
+    await this.otpModel.create({ email: user.email, code, purpose: OtpPurpose.EMAIL_VERIFICATION });
+
+    await this.mailService.sendOtp(user.email, code, user.name);
+    return { message: `Verification OTP sent to ${user.email}. It expires in 10 minutes.` };
+  }
+
+  // ─── Email verification — verify OTP ─────────────────────────────────────
+  async verifyEmail(userId: string, code: string): Promise<{ message: string }> {
+    const user = await this.usersService.findOne(userId);
+    if (!user.email) throw new BadRequestException('No email address on this account');
+    if (user.emailVerified) throw new BadRequestException('Email is already verified');
+
+    const record = await this.otpModel.findOne({
+      email: user.email,
+      code,
+      purpose: OtpPurpose.EMAIL_VERIFICATION,
+      verified: false,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!record) throw new BadRequestException('Invalid or expired OTP');
+
+    await record.updateOne({ verified: true });
+    await this.usersService.update(userId, { emailVerified: true });
+
+    return { message: 'Email verified successfully' };
+  }
+
+  // ─── Forgot password — send OTP to email ─────────────────────────────────
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) throw new NotFoundException('No account found with this email');
+    if (!user.password) {
+      throw new BadRequestException('This account uses Google login — password reset is not available');
+    }
+
+    const code = Math.floor(100_000 + Math.random() * 900_000).toString();
+
+    // Invalidate any existing password-reset OTPs for this email
+    await this.otpModel.deleteMany({ email, purpose: OtpPurpose.PASSWORD_RESET });
+    await this.otpModel.create({ email, code, purpose: OtpPurpose.PASSWORD_RESET });
+
+    await this.mailService.sendOtp(email, code, user.name);
+    return { message: 'OTP sent to your email. It expires in 10 minutes.' };
+  }
+
+  // ─── Reset password — verify OTP then set new password ───────────────────
+  async resetPassword(email: string, otp: string, newPassword: string): Promise<{ message: string }> {
+    const record = await this.otpModel.findOne({
+      email,
+      code: otp,
+      purpose: OtpPurpose.PASSWORD_RESET,
+      verified: false,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!record) throw new BadRequestException('Invalid or expired OTP');
+
+    const user = await this.usersService.findByEmail(email);
+    if (!user) throw new NotFoundException('User not found');
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await this.usersService.update((user._id as any).toString(), { password: hashed });
+
+    // Mark OTP used and revoke all refresh tokens for security
+    await record.updateOne({ verified: true });
+    await this.revokeAllTokens((user._id as any).toString());
+
+    return { message: 'Password reset successfully. Please log in with your new password.' };
   }
 }

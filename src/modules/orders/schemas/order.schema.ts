@@ -83,6 +83,30 @@ export class Order {
 
   @Prop({ type: Date })
   paidAt: Date;
+
+  // Guest tracking — email stored so guests can look up without auth
+  @Prop()
+  guestEmail: string;
+
+  // Shipping / tracking fields (set by admin when dispatching)
+  @Prop()
+  carrier: string;
+
+  @Prop()
+  awbNumber: string;
+
+  @Prop({ type: Date })
+  expectedBy: Date;
+
+  // Status transition timestamps (set automatically on status change)
+  @Prop({ type: Date })
+  confirmedAt: Date;
+
+  @Prop({ type: Date })
+  shippedAt: Date;
+
+  @Prop({ type: Date })
+  deliveredAt: Date;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

@@ -18,6 +18,12 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyRegistrationDto } from './dto/verify-registration.dto';
+import { SendPhoneOtpDto } from './dto/send-phone-otp.dto';
+import { VerifyPhoneOtpDto } from './dto/verify-phone-otp.dto';
+import { VerifyEmailOtpDto } from './dto/verify-email-otp.dto';
 import { GoogleTokenDto } from './dto/google-token.dto';
 import { Public } from '../decorators/public.decorator';
 import { CurrentUser } from '../decorators/current-user.decorator';
@@ -47,9 +53,9 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  @ApiOperation({ summary: 'Register new customer account' })
+  @ApiOperation({ summary: 'Register a new customer account — returns tokens immediately. Phone is verified separately via Firebase OTP on the client.' })
   register(@Body() dto: RegisterDto, @Request() req: any) {
-    return this.authService.register(dto.name, dto.email, dto.password, {
+    return this.authService.register(dto.name, dto.email, dto.password, dto.phone, {
       userAgent: req.headers['user-agent'],
       ip: req.ip,
     });
@@ -123,5 +129,59 @@ export class AuthController {
   @ApiOperation({ summary: 'Logout from all devices' })
   logoutAll(@CurrentUser() user: any) {
     return this.authService.revokeAllTokens(user.id);
+  }
+
+  // ─── Forgot / Reset password ──────────────────────────────────────────────
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send a 6-digit OTP to the account email for password reset' })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP and set a new password' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.email, dto.otp, dto.newPassword);
+  }
+
+  // ─── Phone verification ───────────────────────────────────────────────────
+
+  @UseGuards(JwtAuthGuard)
+  @Post('phone/send-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send OTP to a phone number for verification (must be logged in)' })
+  sendPhoneOtp(@Body() dto: SendPhoneOtpDto, @CurrentUser() user: any) {
+    return this.authService.sendPhoneVerificationOtp(user.id, dto.phone);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('phone/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify phone OTP and mark phone as verified on the account' })
+  verifyPhone(@Body() dto: VerifyPhoneOtpDto, @CurrentUser() user: any) {
+    return this.authService.verifyPhone(user.id, dto.phone, dto.otp);
+  }
+
+  // ─── Email verification ───────────────────────────────────────────────────
+
+  @UseGuards(JwtAuthGuard)
+  @Post('email/send-verification')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send email verification OTP to the logged-in user\'s email' })
+  sendEmailVerification(@CurrentUser() user: any) {
+    return this.authService.sendEmailVerificationOtp(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('email/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email OTP and mark email as verified on the account' })
+  verifyEmail(@Body() dto: VerifyEmailOtpDto, @CurrentUser() user: any) {
+    return this.authService.verifyEmail(user.id, dto.otp);
   }
 }

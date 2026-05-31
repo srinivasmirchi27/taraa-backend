@@ -14,6 +14,8 @@ import { OtpModule } from './modules/otp/otp.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { MailModule } from './modules/mail/mail.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { BannersModule } from './modules/banners/banners.module';
+import { SupportModule } from './modules/support/support.module';
 import { LoggerMiddleware } from './middleware/logger.middleware';
 
 @Module({
@@ -60,6 +62,8 @@ import { LoggerMiddleware } from './middleware/logger.middleware';
     PaymentModule,
     MailModule,
     CategoriesModule,
+    BannersModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [

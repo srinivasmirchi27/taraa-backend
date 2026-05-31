@@ -9,14 +9,22 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { UsersModule } from '../modules/users/users.module';
+import { MailModule } from '../modules/mail/mail.module';
+import { OtpModule } from '../modules/otp/otp.module';
 import { RefreshToken, RefreshTokenSchema } from './schemas/refresh-token.schema';
+import { Otp, OtpSchema } from '../modules/otp/schemas/otp.schema';
 
 @Module({
   imports: [
     UsersModule,
+    MailModule,
+    OtpModule,
     PassportModule,
     ConfigModule,
-    MongooseModule.forFeature([{ name: RefreshToken.name, schema: RefreshTokenSchema }]),
+    MongooseModule.forFeature([
+      { name: RefreshToken.name, schema: RefreshTokenSchema },
+      { name: Otp.name,          schema: OtpSchema          },
+    ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

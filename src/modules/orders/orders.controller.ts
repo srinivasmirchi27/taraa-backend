@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatus } from './schemas/order.schema';
@@ -17,31 +17,56 @@ import { Role } from '../users/enums/role.enum';
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  // Create order — guests can order too (no auth required)
+  // ── Public: place order (guest + auth) ─────────────────────────────────────
   @Public()
   @Post()
-  @ApiOperation({ summary: 'Place a new order' })
+  @ApiOperation({ summary: 'Place a new order (COD or Razorpay)' })
   create(@Body() dto: CreateOrderDto, @CurrentUser() user?: any) {
     return this.ordersService.create(dto, user?.id);
   }
 
-  // Admin: list all orders
+  // ── Public: guest order tracking ───────────────────────────────────────────
+  @Public()
+  @Get('track')
+  @ApiOperation({ summary: 'Track an order by order number + email (no auth required)' })
+  @ApiQuery({ name: 'orderNumber', required: true, example: 'TRA20250531001' })
+  @ApiQuery({ name: 'email',       required: true, example: 'user@example.com' })
+  track(
+    @Query('orderNumber') orderNumber: string,
+    @Query('email')       email: string,
+  ) {
+    if (!orderNumber || !email) {
+      throw new Error('orderNumber and email are required');
+    }
+    return this.ordersService.track(orderNumber, email);
+  }
+
+  // ── Customer: my orders ─────────────────────────────────────────────────────
+  @Get('my')
+  @ApiOperation({ summary: 'Get current user orders' })
+  @ApiQuery({ name: 'page',  required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  getMyOrders(
+    @CurrentUser() user: any,
+    @Query('page')  page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.ordersService.findMyOrders(user.id, page, limit);
+  }
+
+  // ── Admin: list all orders ──────────────────────────────────────────────────
   @Get()
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'List all orders (admin only)' })
+  @ApiQuery({ name: 'page',   required: false })
+  @ApiQuery({ name: 'limit',  required: false })
+  @ApiQuery({ name: 'status', required: false, enum: OrderStatus })
   findAll(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page')   page?: number,
+    @Query('limit')  limit?: number,
     @Query('status') status?: OrderStatus,
   ) {
     return this.ordersService.findAll({ page, limit, status });
-  }
-
-  // Customer: list own orders
-  @Get('my')
-  @ApiOperation({ summary: 'Get current user orders' })
-  getMyOrders(@CurrentUser() user: any, @Query('page') page?: number) {
-    return this.ordersService.findMyOrders(user.id, page);
   }
 
   @Get(':id')
@@ -53,9 +78,9 @@ export class OrdersController {
   @Patch(':id/status')
   @ApiOperation({ summary: 'Update order status' })
   updateStatus(
-    @Param('id') id: string,
-    @Body('status') status: OrderStatus,
-    @CurrentUser() user: any,
+    @Param('id')      id: string,
+    @Body('status')   status: OrderStatus,
+    @CurrentUser()    user: any,
   ) {
     return this.ordersService.updateStatus(id, status, user);
   }

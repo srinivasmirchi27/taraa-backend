@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  NotFoundException,
   UnauthorizedException,
   Inject,
   Logger,
@@ -9,8 +10,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
 import { Model } from 'mongoose';
 import * as admin from 'firebase-admin';
-import { Otp, OtpDocument } from './schemas/otp.schema';
+import { Otp, OtpDocument, OtpPurpose } from './schemas/otp.schema';
 import { UsersService } from '../users/users.service';
+import { SmsService } from './sms.service';
 import { FIREBASE_ADMIN } from '../../firebase/firebase.provider';
 
 @Injectable()
@@ -21,19 +23,25 @@ export class OtpService {
     @InjectModel(Otp.name) private readonly otpModel: Model<OtpDocument>,
     @Inject(FIREBASE_ADMIN) private readonly firebaseApp: admin.app.App | null,
     private readonly usersService: UsersService,
+    private readonly smsService: SmsService,
     private readonly jwtService: JwtService,
   ) {}
 
   // ─── Custom OTP (backend-generated) ──────────────────────────────────────────
 
   async sendOtp(phone: string): Promise<{ message: string }> {
+    // Only send OTP if the phone number belongs to a registered user
+    const user = await this.usersService.findByPhone(phone);
+    if (!user) {
+      throw new NotFoundException('No account found with this phone number. Please register first.');
+    }
+
     const code = Math.floor(100_000 + Math.random() * 900_000).toString();
 
-    await this.otpModel.deleteMany({ phone });
-    await this.otpModel.create({ phone, code });
+    await this.otpModel.deleteMany({ phone, purpose: OtpPurpose.PHONE_AUTH });
+    await this.otpModel.create({ phone, code, purpose: OtpPurpose.PHONE_AUTH });
 
-    // TODO: Replace console.log with your SMS provider (Twilio, MSG91, AWS SNS, etc.)
-    this.logger.log(`OTP for ${phone}: ${code}`);
+    await this.smsService.send(phone, code);
 
     return { message: 'OTP sent successfully' };
   }
