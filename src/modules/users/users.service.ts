@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { User, UserDocument } from './schemas/user.schema';
+import { Model, Types } from 'mongoose';
+import { User, UserDocument, UserAddress } from './schemas/user.schema';
 import { Role } from './enums/role.enum';
 
 @Injectable()
@@ -71,5 +71,45 @@ export class UsersService {
 
   async setRole(id: string, role: Role): Promise<UserDocument> {
     return this.update(id, { role });
+  }
+
+  // ── Address management ────────────────────────────────────────────────────────
+
+  async addAddress(userId: string, dto: Omit<UserAddress, '_id'>): Promise<UserDocument> {
+    const user = await this.findOne(userId);
+    if (dto.isDefault) {
+      user.addresses.forEach(a => { a.isDefault = false; });
+    }
+    if (user.addresses.length === 0) dto.isDefault = true;
+    user.addresses.push({ ...dto, _id: new Types.ObjectId() } as UserAddress);
+    return user.save();
+  }
+
+  async updateAddress(userId: string, addressId: string, dto: Partial<Omit<UserAddress, '_id'>>): Promise<UserDocument> {
+    const user = await this.findOne(userId);
+    const addr = user.addresses.find(a => a._id.toString() === addressId);
+    if (!addr) throw new NotFoundException('Address not found');
+    if (dto.isDefault) user.addresses.forEach(a => { a.isDefault = false; });
+    Object.assign(addr, dto);
+    return user.save();
+  }
+
+  async deleteAddress(userId: string, addressId: string): Promise<UserDocument> {
+    const user = await this.findOne(userId);
+    const idx = user.addresses.findIndex(a => a._id.toString() === addressId);
+    if (idx === -1) throw new NotFoundException('Address not found');
+    const wasDefault = user.addresses[idx].isDefault;
+    user.addresses.splice(idx, 1);
+    if (wasDefault && user.addresses.length > 0) user.addresses[0].isDefault = true;
+    return user.save();
+  }
+
+  async setDefaultAddress(userId: string, addressId: string): Promise<UserDocument> {
+    const user = await this.findOne(userId);
+    const addr = user.addresses.find(a => a._id.toString() === addressId);
+    if (!addr) throw new NotFoundException('Address not found');
+    user.addresses.forEach(a => { a.isDefault = false; });
+    addr.isDefault = true;
+    return user.save();
   }
 }

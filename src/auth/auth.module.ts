@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { FirebaseProvider } from '../firebase/firebase.provider';
 import { UsersModule } from '../modules/users/users.module';
 import { MailModule } from '../modules/mail/mail.module';
 import { OtpModule } from '../modules/otp/otp.module';
@@ -35,7 +36,7 @@ import { Otp, OtpSchema } from '../modules/otp/schemas/otp.schema';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy, GoogleStrategy],
+  providers: [AuthService, JwtStrategy, LocalStrategy, GoogleStrategy, FirebaseProvider],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

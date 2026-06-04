@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
@@ -52,5 +52,31 @@ export class UsersController {
   @ApiOperation({ summary: 'Delete user (super admin only)' })
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
+  }
+
+  // ── Address management ────────────────────────────────────────────────────────
+
+  @Post('me/addresses')
+  @ApiOperation({ summary: 'Add a saved address' })
+  addAddress(@CurrentUser() user: any, @Body() body: any) {
+    return this.usersService.addAddress(user.id, body);
+  }
+
+  @Patch('me/addresses/:addressId')
+  @ApiOperation({ summary: 'Update a saved address' })
+  updateAddress(@CurrentUser() user: any, @Param('addressId') addressId: string, @Body() body: any) {
+    return this.usersService.updateAddress(user.id, addressId, body);
+  }
+
+  @Delete('me/addresses/:addressId')
+  @ApiOperation({ summary: 'Delete a saved address' })
+  deleteAddress(@CurrentUser() user: any, @Param('addressId') addressId: string) {
+    return this.usersService.deleteAddress(user.id, addressId);
+  }
+
+  @Patch('me/addresses/:addressId/default')
+  @ApiOperation({ summary: 'Set an address as default' })
+  setDefault(@CurrentUser() user: any, @Param('addressId') addressId: string) {
+    return this.usersService.setDefaultAddress(user.id, addressId);
   }
 }

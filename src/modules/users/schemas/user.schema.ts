@@ -1,9 +1,21 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { Exclude } from 'class-transformer';
 import { Role } from '../enums/role.enum';
 
 export type UserDocument = User & Document;
+
+export interface UserAddress {
+  _id: Types.ObjectId;
+  label: string;
+  name: string;
+  phone: string;
+  line1: string;
+  city: string;
+  state: string;
+  pincode: string;
+  isDefault: boolean;
+}
 
 @Schema({ timestamps: true, toJSON: { virtuals: true } })
 export class User {
@@ -23,8 +35,20 @@ export class User {
   @Prop({ unique: true, sparse: true })
   phone: string;
 
-  @Prop()
-  address: string;
+  @Prop({
+    type: [{
+      label:     { type: String, default: 'Home' },
+      name:      { type: String, required: true },
+      phone:     { type: String, required: true },
+      line1:     { type: String, required: true },
+      city:      { type: String, required: true },
+      state:     { type: String, required: true },
+      pincode:   { type: String, required: true },
+      isDefault: { type: Boolean, default: false },
+    }],
+    default: [],
+  })
+  addresses: UserAddress[];
 
   @Prop({ default: true })
   isActive: boolean;

@@ -10,10 +10,14 @@ export class CreateProductDto {
   @ApiProperty() @Type(() => Number) @IsNumber() @Min(0) originalPrice: number;
 
   @ApiPropertyOptional() @IsOptional() @IsString() image?: string;
-  @ApiProperty() @IsString() description: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
 
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) discount?: number;
-  @ApiPropertyOptional() @IsOptional() @IsArray() images?: string[];
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }) => Array.isArray(value) ? value : value ? [value] : [])
+  @IsArray()
+  images?: string[];
   @ApiPropertyOptional() @IsOptional() @IsString() badge?: string;
 
   // multipart sends booleans as the string "true"/"false" — Transform handles it

@@ -1,11 +1,11 @@
-import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException, Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
-import { OAuth2Client } from 'google-auth-library';
+import * as admin from 'firebase-admin';
 import { UsersService } from '../modules/users/users.service';
 import { UserDocument } from '../modules/users/schemas/user.schema';
 import { RefreshToken, RefreshTokenDocument } from './schemas/refresh-token.schema';
@@ -13,13 +13,12 @@ import { Otp, OtpDocument, OtpPurpose } from '../modules/otp/schemas/otp.schema'
 import { MailService } from '../modules/mail/mail.service';
 import { SmsService } from '../modules/otp/sms.service';
 import { GoogleProfile } from './strategies/google.strategy';
+import { FIREBASE_ADMIN } from '../firebase/firebase.provider';
 
 const REFRESH_TOKEN_DAYS = 30;
 
 @Injectable()
 export class AuthService {
-  private googleClient: OAuth2Client;
-
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -30,9 +29,8 @@ export class AuthService {
     private readonly otpModel: Model<OtpDocument>,
     private readonly mailService: MailService,
     private readonly smsService: SmsService,
-  ) {
-    this.googleClient = new OAuth2Client(config.get<string>('GOOGLE_CLIENT_ID'));
-  }
+    @Inject(FIREBASE_ADMIN) private readonly firebaseAdmin: admin.app.App | null,
+  ) {}
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -132,23 +130,26 @@ export class AuthService {
   // Frontend uses Google Sign-In SDK → gets idToken → sends here.
 
   async googleTokenLogin(idToken: string, meta?: { userAgent?: string; ip?: string }) {
-    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
-    if (!clientId) throw new BadRequestException('Google login is not configured on this server');
+    if (!this.firebaseAdmin) {
+      throw new BadRequestException('Firebase Admin SDK is not configured on this server');
+    }
 
-    let payload: any;
+    let decoded: admin.auth.DecodedIdToken;
     try {
-      const ticket = await this.googleClient.verifyIdToken({ idToken, audience: clientId });
-      payload = ticket.getPayload();
+      decoded = await this.firebaseAdmin.auth().verifyIdToken(idToken);
     } catch {
       throw new UnauthorizedException('Invalid Google ID token');
     }
 
+    const googleId =
+      decoded.firebase?.identities?.['google.com']?.[0] ?? decoded.uid;
+
     const profile: GoogleProfile = {
-      googleId: payload.sub,
-      email: payload.email ?? '',
-      name: payload.name ?? payload.email,
-      profileImage: payload.picture,
-      emailVerified: payload.email_verified ?? false,
+      googleId,
+      email: decoded.email ?? '',
+      name: decoded.name ?? decoded.email ?? '',
+      profileImage: decoded.picture,
+      emailVerified: decoded.email_verified ?? false,
     };
 
     return this.googleLogin(profile, meta);

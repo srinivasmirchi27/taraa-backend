@@ -29,7 +29,7 @@ export class Product {
   @Prop()
   badge: string;
 
-  @Prop({ required: true })
+  @Prop({ default: "" })
   description: string;
 
   @Prop({ default: true })
