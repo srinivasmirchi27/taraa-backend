@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { ValidationPipe, VersioningType, RequestMethod } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -21,8 +21,13 @@ async function bootstrap() {
   // Gzip compression
   app.use(compression());
 
-  // Global API prefix and versioning
-  app.setGlobalPrefix('api');
+  // Global API prefix — exclude root and health so Render health checks work
+  app.setGlobalPrefix('api', {
+    exclude: [
+      { path: '/', method: RequestMethod.GET },
+      { path: 'health', method: RequestMethod.GET },
+    ],
+  });
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
   app.enableCors({
