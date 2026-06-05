@@ -16,8 +16,14 @@ export class AppController {
   }
 
   @Get('health')
-  @ApiOperation({ summary: 'Health check — confirms API is alive' })
+  @ApiOperation({ summary: 'Health check' })
   health() {
     return { status: 'ok', timestamp: new Date().toISOString(), service: 'taraa-api' };
+  }
+
+  @Get('ping')
+  @ApiOperation({ summary: 'Ping — lightweight liveness check' })
+  ping() {
+    return { status: 'ok' };
   }
 }

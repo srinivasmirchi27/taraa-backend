@@ -26,6 +26,7 @@ async function bootstrap() {
     exclude: [
       { path: '/', method: RequestMethod.GET },
       { path: 'health', method: RequestMethod.GET },
+      { path: 'ping', method: RequestMethod.GET },
     ],
   });
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
