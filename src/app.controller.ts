@@ -8,10 +8,12 @@ export class AppController {
   @ApiOperation({ summary: 'API root — returns version info' })
   root() {
     return {
-      name: 'Taraa API',
+      success: true,
+      message: 'Welcome to Taraa API 🎉',
       version: '1.0',
       docs: '/api/docs',
-      health: '/api/v1/health',
+      health: '/health',
+      ping: '/ping',
     };
   }
 
