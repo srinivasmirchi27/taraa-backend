@@ -6,7 +6,7 @@ services:
     plan: free
     buildCommand: npm install && nest build
     startCommand: node dist/main
-    healthCheckPath: /api/v1/health
+    healthCheckPath: /ping
     envVars:
       - key: NODE_ENV
         value: production
@@ -33,7 +33,7 @@ services:
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
       - key: FIREBASE_PROJECT_ID
-        value: taraa-7db96
+        value: taraa-16d15
       - key: FIREBASE_CLIENT_EMAIL
         sync: false
       - key: FIREBASE_PRIVATE_KEY
