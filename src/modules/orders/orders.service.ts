@@ -130,7 +130,7 @@ export class OrdersService {
     return [
       {
         label:    'Order Placed',
-        location: 'taraa.in',
+        location: 'taraajewellery.in',
         time:     (order as any).createdAt,
         done:     true,
         active:   s === OrderStatus.PROCESSING,

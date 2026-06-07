@@ -10,7 +10,7 @@ export class MailService {
   private readonly from: string;
 
   constructor(private readonly config: ConfigService) {
-    this.from = `"${config.get('MAIL_FROM_NAME', 'Taraa')}" <${config.get('MAIL_FROM_ADDRESS', 'noreply@taraa.in')}>`;
+    this.from = `"${config.get('MAIL_FROM_NAME', 'Taraa')}" <${config.get('MAIL_FROM_ADDRESS', 'noreply@taraajewellery.in')}>`;
 
     this.transporter = nodemailer.createTransport({
       host: config.get<string>('MAIL_HOST'),
@@ -46,7 +46,7 @@ export class MailService {
       <div style="font-family:sans-serif;max-width:600px;margin:auto">
         <h2 style="color:#c0392b">Welcome to Taraa, ${name}!</h2>
         <p>Thank you for creating an account. Explore our exclusive jewellery collection.</p>
-        <a href="https://taraa.in/shop"
+        <a href="https://www.taraajewellery.in/shop"
            style="display:inline-block;background:#c0392b;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin-top:16px">
           Shop Now
         </a>
@@ -147,7 +147,7 @@ export class MailService {
            ${order.shippingAddress.state} - ${order.shippingAddress.pincode}
         </p>
 
-        <a href="https://taraa.in/orders"
+        <a href="https://www.taraajewellery.in/orders"
            style="display:inline-block;background:#c0392b;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin-top:16px">
           Track Order
         </a>
@@ -172,7 +172,7 @@ export class MailService {
         <h2 style="color:#c0392b">Order Update</h2>
         <p>Hi ${name}, your order <strong>${orderNumber}</strong> status has been updated to:</p>
         <p style="font-size:20px;font-weight:bold">${statusLabel[status] ?? status}</p>
-        <a href="https://taraa.in/orders"
+        <a href="https://www.taraajewellery.in/orders"
            style="display:inline-block;background:#c0392b;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin-top:16px">
           View Order
         </a>
