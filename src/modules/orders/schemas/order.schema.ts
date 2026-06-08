@@ -40,6 +40,9 @@ export class Order {
   })
   items: OrderItem[];
 
+  @Prop({ type: Number, default: 0 })
+  shipping: number;
+
   @Prop({ required: true, type: Number })
   total: number;
 

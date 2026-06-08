@@ -32,7 +32,11 @@ export class OrdersService {
 
   // ── Create ─────────────────────────────────────────────────────────────────
   async create(dto: CreateOrderDto, userId?: string): Promise<OrderDocument> {
-    const total = dto.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subtotal = dto.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const itemCount = dto.items.reduce((sum, item) => sum + item.quantity, 0);
+    // Flat ₹50 shipping. Free when subtotal ≥ ₹500 OR 5+ items.
+    const shipping = subtotal >= 500 || itemCount >= 5 ? 0 : 50;
+    const total = subtotal + shipping;
     const orderNumber = await this.generateOrderNumber();
 
     return this.model.create({
@@ -42,6 +46,7 @@ export class OrdersService {
       shippingAddress: dto.shippingAddress,
       paymentMethod: dto.paymentMethod,
       guestEmail: dto.guestEmail,
+      shipping,
       total,
     });
   }

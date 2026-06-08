@@ -27,17 +27,17 @@ export class PaymentService {
   // Returns everything the client needs to open the Razorpay checkout popup.
 
   async initiateCheckout(dto: InitiatePaymentDto, userId?: string) {
-    const total = dto.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const currency = dto.currency ?? 'INR';
 
-    // Create the app-side order first
+    // Create the app-side order first. The order total already includes the
+    // ₹50 shipping (free over ₹500 / 5+ items), computed in OrdersService.create.
     const appOrder = await this.ordersService.create(
       { items: dto.items, shippingAddress: dto.shippingAddress, paymentMethod: 'RAZORPAY' },
       userId,
     );
 
-    // amount in paise (Razorpay works in smallest currency unit)
-    const amountPaise = Math.round(total * 100);
+    // Charge the order total (subtotal + shipping). amount in paise.
+    const amountPaise = Math.round(appOrder.total * 100);
 
     const rzpOrder = await (this.razorpay.orders.create as any)({
       amount: amountPaise,
