@@ -52,6 +52,17 @@ export class PaymentController {
     return this.paymentService.verifyPayment(dto);
   }
 
+  // POST /api/v1/payments/cancel
+  // Called when the Razorpay payment fails or the popup is dismissed, to remove
+  // the unpaid pending order so a failed payment is never placed as an order.
+  @Public()
+  @Post('cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancel a pending (unpaid) order after a failed/abandoned payment' })
+  cancelPending(@Body('appOrderId') appOrderId: string) {
+    return this.paymentService.cancelPendingOrder(appOrderId);
+  }
+
   // POST /api/v1/payments/webhook
   // Register this URL in Razorpay Dashboard → Webhooks.
   // Needs the raw request body — ensure rawBody:true is set in main.ts.

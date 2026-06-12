@@ -48,7 +48,24 @@ export class OrdersService {
       guestEmail: dto.guestEmail,
       shipping,
       total,
+      // Orders start PENDING (awaiting payment). They only become a real,
+      // placed order (PROCESSING) once the payment is verified as paid.
+      status: OrderStatus.PENDING,
     });
+  }
+
+  // Remove an order that never got paid (payment failed / popup dismissed).
+  // Guarded so it can never delete a paid/confirmed order.
+  async cancelPending(id: string): Promise<void> {
+    await this.model
+      .deleteOne({ _id: id, status: OrderStatus.PENDING, isPaid: false })
+      .exec();
+  }
+
+  async cancelPendingByRazorpayOrderId(razorpayOrderId: string): Promise<void> {
+    await this.model
+      .deleteOne({ razorpayOrderId, status: OrderStatus.PENDING, isPaid: false })
+      .exec();
   }
 
   // ── Admin: list all ────────────────────────────────────────────────────────
@@ -57,7 +74,10 @@ export class OrdersService {
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
+    // Exclude unpaid PENDING orders (failed/abandoned payments) by default so
+    // they never show up as placed orders in My Orders or the admin panel.
     if (status) where.status = status;
+    else where.status = { $ne: OrderStatus.PENDING };
     if (userId) where.userId = userId;
 
     const [items, total] = await Promise.all([
@@ -189,7 +209,7 @@ export class OrdersService {
     const order = await this.model
       .findByIdAndUpdate(
         id,
-        { isPaid: true, razorpayPaymentId, razorpaySignature, paidAt: new Date() },
+        { isPaid: true, status: OrderStatus.PROCESSING, razorpayPaymentId, razorpaySignature, paidAt: new Date() },
         { new: true },
       )
       .exec();

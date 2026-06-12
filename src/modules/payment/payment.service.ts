@@ -130,9 +130,23 @@ export class PaymentService {
     if (eventType === 'payment.failed') {
       const payment = event.payload.payment.entity;
       this.logger.warn(`Webhook: payment failed — ${payment.id}`);
+      // Drop the unpaid pending order so a failed payment never becomes an order.
+      if (payment.order_id) {
+        await this.ordersService.cancelPendingByRazorpayOrderId(payment.order_id);
+      }
     }
 
     return { received: true };
+  }
+
+  // ─── Cancel a pending order (payment failed or popup dismissed) ───────────────
+  // Called by the client when Razorpay reports a failure or the user closes the
+  // checkout without paying, so the unpaid order is removed (never "placed").
+
+  async cancelPendingOrder(appOrderId: string) {
+    if (!appOrderId) throw new BadRequestException('appOrderId is required');
+    await this.ordersService.cancelPending(appOrderId);
+    return { cancelled: true };
   }
 
   // ─── Refund ───────────────────────────────────────────────────────────────────
